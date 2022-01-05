@@ -6,8 +6,8 @@ Most of them are designed for using ES8388 Codec, but it can be easily changed t
 
 ## How to use it?
 Just clone it to an Arduino Sketch folder and open it as a regular Arduino ESP32 Sketch.\
-The code is configured to work with ES8388 in Espressif LyraT Board.\
-It can easily be modified to work with other pins and other codecs as MAX98357, for instance. 
+The code is configured to work with ES8388 using the Espressif LyraT Board.\
+It can easily be modified to work with other I2S-ESP32 pins and other codecs such as MAX98357, for instance. 
 
 ## Current Status:
 
