@@ -1,14 +1,12 @@
 # I2S_IDF_PoC
 
-This is a set of ESP32 Arduino sketches that test I2S interface using IDF.
-This has been created in order to help me understand how IDF works with I2S and how Arduino could use it.
-
+This is a set of ESP32 Arduino sketches that test I2S interface using IDF.\
+This has been created in order to help me understand how IDF works with I2S and how Arduino could use it.\
 Most of them are designed for using ES8388 Codec, but it can be easily changed to work with any I2S amplifier chip.
 
 ## How to use it?
-Just clone it to an Arduino Sketch folder and open it as a regular Arduino ESP32 Sketch.
-The code is configured to work with ES8388 in Espressif LyraT Board
-
+Just clone it to an Arduino Sketch folder and open it as a regular Arduino ESP32 Sketch.\
+The code is configured to work with ES8388 in Espressif LyraT Board.\
 It can easily be modified to work with other pins and other codecs as MAX98357, for instance. 
 
 ## Current Status:
