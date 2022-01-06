@@ -11,15 +11,26 @@
 // https://github.com/bitluni/DawnOfAV/blob/master/DawnOfAV/sfx/music.h
 #include "music.h"
 
-// PLAY_MUSIC Application is a example of onTransmit() usage
+// PLAY_MUSIC Application is an example of onTransmit() usage
 // SIMPLE_TONE Application is an example of a sware wave tone generated in Arduino loop()
 
 // Pick an application:  Play a Music Sample or a Simple Tone
-#define PLAY_MUSIC    1   // 1 means "Play Flash Stored Music Sample" -- 0 means "Play Simple Tone Frequency"
+#define PLAY_MUSIC    0   // 1 means "Play Flash Stored Music Sample" -- 0 means "Play Simple Tone Frequency"
 #if PLAY_MUSIC
 #define SIMPLE_TONE   0
 #else
 #define SIMPLE_TONE   1
+#define ON_TRASNMIT   1   // 1 for sending sample in OnTransmit() or 0 for sending samples in loop()
+#define USE_SET_BUFFER_SIZE 1   // ONLY with ON_TRASNMIT=1 ==> 1 means to adjust via I2S.setBufferSize() -- 0 means adjust via SampleRate
+#endif
+
+#if ON_TRASNMIT
+size_t sampleInBytes = 0;
+int16_t *sampleBuffer = NULL;
+
+void sendTone() {
+    I2S.write(sampleBuffer, sampleInBytes);
+}
 #endif
 
 #if PLAY_MUSIC
@@ -48,17 +59,30 @@ void sendMusicSamples() {
 #endif
 
 #if SIMPLE_TONE
-
-// Simple Tone parameters:
-#define SAMPLE_RATE       (44100)    // tested with 8000, 16000, 22050 and 44100
-#define WAVE_FREQ_HZ      (440)      // any value 
-#define SAMPLE_PER_CYCLE  (SAMPLE_RATE/WAVE_FREQ_HZ)     // number of samples per Hz
-
 // So far, the current LyraT configuration is Stereo with 16 bits - any Sample Rate
 #define BITS_PER_SAMPLE   (16)       // amplitud level must be adjusted depending on #bits
 #define AMPLITUDE         (500)               // works on 16 bits
 #define I2S_MODE          I2S_PHILIPS_MODE    // I2S_PHILIPS_MODE, I2S_RIGHT_JUSTIFIED_MODE, I2S_LEFT_JUSTIFIED_MODE
 
+
+#if ON_TRASNMIT
+#if !USE_SET_BUFFER_SIZE
+// Simple Tone parameters based on 512 bytes (4 bytes per streo sample) = 128 samples per Hz:
+#define WAVE_FREQ_HZ      (440)      // any value 
+#define SAMPLE_PER_CYCLE  (DEFAULT_I2S_BUFFER_SIZE / sizeof(int16_t) / 2)     // number of samples per Hz - considering 2 bytes per sample and 2 samples for stereo
+#define SAMPLE_RATE       (WAVE_FREQ_HZ * SAMPLE_PER_CYCLE)    // exactly proportional to default 512 bytes in I2S buffer
+#else
+// ANOTHER way to solve it is to use I2S.SetBufferSize(SAMPLE_PER_CYCLE * 4); and keep SAMPLE_RATE whatever wanted 
+#define SAMPLE_RATE       (44100)    // tested with 8000, 16000, 22050 and 44100
+#define WAVE_FREQ_HZ      (440)      // any value 
+#define SAMPLE_PER_CYCLE  (SAMPLE_RATE/WAVE_FREQ_HZ)     // number of samples per Hz
+#endif
+#else
+// Simple Tone parameters:
+#define SAMPLE_RATE       (44100)    // tested with 8000, 16000, 22050 and 44100
+#define WAVE_FREQ_HZ      (440)      // any value 
+#define SAMPLE_PER_CYCLE  (SAMPLE_RATE/WAVE_FREQ_HZ)     // number of samples per Hz
+#endif
 #else
 // So far, the current LyraT configuration is Stereo with 16 bits - any Sample Rate
 
@@ -112,10 +136,41 @@ void setup() {
   Serial.println("Using onTransmit() to fill up the samples, sending block by block.\n-----------");
 
 #endif
+#if ON_TRASNMIT
+  uint16_t sample = AMPLITUDE;
+#if USE_SET_BUFFER_SIZE
+  I2S.setBufferSize(SAMPLE_PER_CYCLE * 4);  
+#endif
+  sampleInBytes = I2S.availableForWrite();
+  sampleBuffer = (int16_t *)malloc(sampleInBytes);
+  size_t numOfSamples = sampleInBytes / sizeof(sample);
+  
+  Serial.printf("\n -- Total Bytes = %d, Sample# = %d, HalfWave = %d \n", sampleInBytes, numOfSamples, SAMPLE_PER_CYCLE / 2);
+  for (int i = 0, c = 0; i < numOfSamples / 2; i++) { // 2 for stereo 
+    if (c++ == SAMPLE_PER_CYCLE / 2) {
+      sample = -sample;
+      c = 0;
+    }
+    sampleBuffer[2*i] = sample;
+    sampleBuffer[2*i + 1] = sample;
+    //Serial.printf("Sample [%d] = %x\n", i, sample);
+  }
+
+  Serial.printf(" INIT Available For Write: %d\n", I2S.availableForWrite());
+  Serial.printf(" INIT Available For Read: %d\n", I2S.available());
+
+
+
+  I2S.onTransmit(sendTone);   // setting up the callback function that will actually play the music
+  sendTone();                 // kick off! Send the first buffer to I2S and start it up!
+#endif
 }
 
 void loop() {
 #if SIMPLE_TONE
+#if ON_TRASNMIT
+  return;            // using onTransmit() to send the samples instead of here in loop()
+#endif
   static int count = 0;
   static int sample = AMPLITUDE;
 
